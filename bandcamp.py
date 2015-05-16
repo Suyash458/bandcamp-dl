@@ -14,9 +14,9 @@ import sys,os
 
 class Downloader():
 	
-	def __init__(self,url = None,dir = None):
+	def __init__(self,url = None,dirname = None):
 		self.url = url
-		self.dir = dir
+		self.dirname = dirname
 		
 	def getMetaData(self,soup):
 		metadata = soup.find('meta',{'name':'Description'})['content']		
@@ -44,7 +44,7 @@ class Downloader():
 		file_size = float(response.headers['content-length'])
 		filename = re.sub('[\/:*"?<>|]','_',filename)
 		if(os.path.isfile(filename)):
-			if os.path.getsize(filename) == long(file_size)):
+			if os.path.getsize(filename) == long(file_size):
 				print "File already exists, skipping."
 				return
 			else:
@@ -84,8 +84,13 @@ class Downloader():
 			print tracks
 			self.getFile(tracks,links[0])
 		else:
+			os.chdir(str(self.dirname))
+			folder = re.sub('[\/:*"?<>|]','_',album)
+			if not os.path.isdir(folder):
+				os.mkdir(folder)
+			os.chdir(os.getcwd() + '\\' + str(folder))
+			print "Saving in : " + os.getcwd()
 			print str(len(tracks)) + " tracks found."
 			print "Album : " + album
 			for track,link in zip(tracks,links):
 				self.getFile(track + '.mp3',link)
-		
