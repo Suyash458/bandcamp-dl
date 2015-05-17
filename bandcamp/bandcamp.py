@@ -1,6 +1,6 @@
 '''
-1. Take command line arguments.
-2. Change directory.
+1. Take command line arguments. //Done
+2. Change directory. //Done
 3. Validate file name. //Done
 4. Check existing files. //Done
 5. Make it robust.
@@ -72,9 +72,18 @@ class Downloader():
 		elif 'bandcamp' not in self.url:
 			print "Invalid URL"
 			return
-		print "Connecting ... "
-		response = requests.get(self.url)
+		try:
+			os.chdir(str(self.dirname))
+			print "Connecting ... "
+			response = requests.get(self.url)
+		except WindowsError:
+			print "Invalid Directory"
+			return
+		except requests.exceptions:
+			print "Network Error"
+			return
 		print "Response: " + str(response.status_code)
+		assert response.status_code == 200
 		parser = HTMLParser.HTMLParser()
 		soup = BeautifulSoup(parser.unescape(response.text))
 		album,tracks = self.getMetaData(soup)
@@ -84,7 +93,6 @@ class Downloader():
 			print tracks
 			self.getFile(tracks,links[0])
 		else:
-			os.chdir(str(self.dirname))
 			folder = re.sub('[\/:*"?<>|]','_',album)
 			if not os.path.isdir(folder):
 				os.mkdir(folder)
