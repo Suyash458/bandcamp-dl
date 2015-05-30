@@ -94,7 +94,6 @@ class Downloader():
 		audio.tags["TALB"] = TALB(encoding=3, text=metadata['album'])
 		audio.tags["TPE1"] = TPE1(encoding=3, text=metadata['artist'])
 		audio.tags["TDRC"] = TDRC(encoding=3, text=unicode(metadata['year']))
-		audio.tags["TRCK"] = COMM(encoding=3, text=u'1')
 		audio.save()
 				
 	def Download(self):
