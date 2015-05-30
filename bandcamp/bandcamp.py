@@ -26,7 +26,7 @@ class Downloader():
 		var = re.search('trackinfo.*}]',str(JSdata)).group()[11::]
 		tracks = json.loads(var)
 		artist = re.search('artist: .*"',str(JSdata)).group()[9:-1]
-		album = re.search('album_title.*"',str(JSdata)).group()[15:-1]
+		album = re.search('album_title.*"',str(JSdata)).group().split(':')[1][2:-1]
 		year = content.strip()[-1:-5:-1][::-1]
 		metadata = {'artist' : artist,
 					'album' : album,
@@ -59,8 +59,6 @@ class Downloader():
 				return
 			else:
 				print "Incomplete download, restarting."
-				print os.path.getsize(filename)
-				print long(file_size)
 		print "File Size: " + '%.2f' % (file_size/(1000**2)) + ' MB'
 		print "Saving as: " + filename
 		done = 0
