@@ -10,6 +10,8 @@
 import re,json,requests,HTMLParser
 from bs4 import BeautifulSoup
 import sys,os
+from mutagen.mp3 import MP3
+from mutagen.id3 import ID3, TIT2, TALB, TPE1, TPE2, COMM, USLT, TCOM, TCON, TDRC,APIC
 
 
 class Downloader():
@@ -18,25 +20,33 @@ class Downloader():
 		self.url = url
 		self.dirname = dirname
 		
-	def getMetaData(self,soup):
-		metadata = soup.find('meta',{'name':'Description'})['content']		
-		album = soup.find('meta',{'name':'title'})['content']		
-		trackInfo = re.findall('\d+\. .*',metadata)
-		if 'track' in self.url:
-			return None,album
-		if 'album' in self.url:
-			return album,trackInfo
-			
-	def getLinks(self,soup,parser):
+	def getData(self,soup):	
+		content = soup.find('meta',{'name':'Description'})['content']		
 		JSdata = soup.findAll('script')
-		var = re.search('trackinfo.*}]',str(JSdata))
-		var = var.group()[11::]
-		var = json.loads(var)
-		links = []
-		for i in var:
-			links.append(parser.unescape(i['file']['mp3-128']))
-		return links
+		var = re.search('trackinfo.*}]',str(JSdata)).group()[11::]
+		tracks = json.loads(var)
+		artist = re.search('artist: .*"',str(JSdata)).group()[9:-1]
+		album = re.search('album_title.*"',str(JSdata)).group()[15:-1]
+		year = content.strip()[-1:-5:-1][::-1]
+		metadata = {'artist' : artist,
+					'album' : album,
+					'year' : year}
+		return metadata,tracks
+	
+	def getAlbumArt(self,soup,parser):
+		JSdata = soup.findAll('script')
+		albumArtURL = re.search('artFullsizeUrl.*"',str(JSdata)).group()[17:-1]
+		print "Downloading Album Art."
+		format = albumArtURL.split('.')[-1]
+		self.getFile('album-art.' + format,parser.unescape(albumArtURL))
 		
+	def progressBar(self,done,file_size):
+		percentage = ((done/file_size)*100)
+		sys.stdout.flush()
+		sys.stdout.write('\r')	
+		sys.stdout.write('[' + '#'*int((percentage/5)) + ' '*int((100-percentage)/5) + '] ')
+		sys.stdout.write('%.2f' % percentage + ' %')
+				
 	def getFile(self,filename,link):
 		print "Connecting to stream..."
 		response = requests.get(str(link), stream=True)
@@ -44,12 +54,14 @@ class Downloader():
 		file_size = float(response.headers['content-length'])
 		filename = re.sub('[\/:*"?<>|]','_',filename)
 		if(os.path.isfile(filename)):
-			if os.path.getsize(filename) == long(file_size):
+			if os.path.getsize(filename) >= long(file_size):
 				print "File already exists, skipping."
 				return
 			else:
 				print "Incomplete download, restarting."
-		print "File Size: " + '%.2f' % (file_size/(1024**2)) + ' MB'
+				print os.path.getsize(filename)
+				print long(file_size)
+		print "File Size: " + '%.2f' % (file_size/(1000**2)) + ' MB'
 		print "Saving as: " + filename
 		done = 0
 		with open(filename,'wb') as file:
@@ -58,12 +70,32 @@ class Downloader():
 					file.write(chunk)
 					file.flush()
 					done += len(chunk)
-					percentage = ((done/file_size)*100)
-					sys.stdout.flush()
-					sys.stdout.write('\r')
-					sys.stdout.write('#'*int((percentage/5)) + ' ')
-					sys.stdout.write('%.2f' % percentage + ' %')
+					self.progressBar(done,file_size)
 		print "\nDownload complete."
+	
+	def tagFile(self,filename,metadata,track):
+		audio = MP3(filename,ID3=ID3)
+		try:
+			audio.add_tags()
+		except:
+			pass
+		with open('album-art.jpg','rb') as file:
+			image = file.read()
+		audio.tags.add(
+			APIC(
+				encoding=3,
+				mime='image/jpeg',
+				type=3,
+				desc=u'Cover',
+				data=image
+			)
+		)
+		audio.tags["TIT2"] = TIT2(encoding=3, text=track['title'])
+		audio.tags["TALB"] = TALB(encoding=3, text=metadata['album'])
+		audio.tags["TPE1"] = TPE1(encoding=3, text=metadata['artist'])
+		audio.tags["TDRC"] = TDRC(encoding=3, text=unicode(metadata['year']))
+		audio.tags["TRCK"] = COMM(encoding=3, text=u'1')
+		audio.save()
 				
 	def Download(self):
 		if self.url is None:
@@ -73,7 +105,8 @@ class Downloader():
 			print "Invalid URL"
 			return
 		try:
-			os.chdir(str(self.dirname))
+			if self.dirname is not None:
+				os.chdir(str(self.dirname))
 			print "Connecting ... "
 			response = requests.get(self.url)
 		except WindowsError:
@@ -86,19 +119,18 @@ class Downloader():
 		assert response.status_code == 200
 		parser = HTMLParser.HTMLParser()
 		soup = BeautifulSoup(parser.unescape(response.text))
-		album,tracks = self.getMetaData(soup)
-		links = self.getLinks(soup,parser)
-		if album is None:
-			print "1 track found.";
-			print tracks
-			self.getFile(tracks,links[0])
-		else:
-			folder = re.sub('[\/:*"?<>|]','_',album)
-			if not os.path.isdir(folder):
-				os.mkdir(folder)
-			os.chdir(os.getcwd() + '\\' + str(folder))
-			print "Saving in : " + os.getcwd()
-			print str(len(tracks)) + " tracks found."
-			print "Album : " + album
-			for track,link in zip(tracks,links):
-				self.getFile(track + '.mp3',link)
+		metadata,tracks = self.getData(soup)
+		folder = re.sub('[\/:*"?<>|]','_',metadata['artist'] + ' - ' + metadata['album'])
+		if not os.path.isdir(folder):
+			os.mkdir(folder)
+		os.chdir(os.getcwd() + '\\' + str(folder))
+		self.getAlbumArt(soup,parser)
+		print "Saving in : " + os.getcwd()
+		print str(len(tracks)) + " track(s) found."
+		print "Album : " + metadata['album']
+		print "Artist: " + metadata['artist']
+		for track in tracks:
+			filename = parser.unescape(str(track['track_num']) + '. ' + track['title'].encode('utf-8') + '.mp3')
+			link = parser.unescape(track['file']['mp3-128'])
+			self.getFile(filename,link)
+			self.tagFile(filename,metadata,track)
