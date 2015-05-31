@@ -14,3 +14,7 @@ A small command-line program to download tracks from Bandcamp.com
 * On the terminal or Command Prompt Type
   `python bandcamp.py <url> <directory>`
   
+###Dependencies
+* BeautifulSoup - HTML parsing
+* Requests - for retrieving HTML
+* Mutagen - To tag mp3 files and add album art
