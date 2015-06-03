@@ -56,7 +56,7 @@ class Downloader():
 		if(os.path.isfile(filename)):
 			if os.path.getsize(filename) >= long(file_size):
 				print "File already exists, skipping."
-				return
+				return new_filename
 			else:
 				print "Incomplete download, restarting."
 		print "File Size: " + '%.2f' % (file_size/(1000**2)) + ' MB'
@@ -69,6 +69,7 @@ class Downloader():
 					file.flush()
 					done += len(chunk)
 					self.progressBar(done,file_size)
+		return new_filename
 		print "\nDownload complete."
 	
 	def tagFile(self,filename,metadata,track):
@@ -129,5 +130,5 @@ class Downloader():
 		for track in tracks:
 			filename = parser.unescape(str(track['track_num']) + '. ' + track['title'].encode('utf-8') + '.mp3')
 			link = parser.unescape(track['file']['mp3-128'])
-			self.getFile(filename,link)
-			self.tagFile(filename,metadata,track)
+			new_filename = self.getFile(filename,link)
+			self.tagFile(new_filename,metadata,track)
