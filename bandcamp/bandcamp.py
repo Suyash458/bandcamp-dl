@@ -55,7 +55,7 @@ class Downloader():
 		filename = re.sub('[\/:*"?<>|]','_',filename)
 		if(os.path.isfile(filename)):
 			if os.path.getsize(filename) >= long(file_size):
-				print "File already exists, skipping."
+				print filename + " already exists, skipping."
 				return new_filename
 			else:
 				print "Incomplete download, restarting."
