@@ -56,7 +56,7 @@ class Downloader():
 		if(os.path.isfile(filename)):
 			if os.path.getsize(filename) >= long(file_size):
 				print filename + " already exists, skipping."
-				return new_filename
+				return filename
 			else:
 				print "Incomplete download, restarting."
 		print "File Size: " + '%.2f' % (file_size/(1000**2)) + ' MB'
@@ -69,7 +69,7 @@ class Downloader():
 					file.flush()
 					done += len(chunk)
 					self.progressBar(done,file_size)
-		return new_filename
+		return filename
 		print "\nDownload complete."
 	
 	def tagFile(self,filename,metadata,track):
@@ -77,7 +77,7 @@ class Downloader():
 		try:
 			audio.add_tags()
 		except:
-			pass
+			return 
 		with open('album-art.jpg','rb') as file:
 			image = file.read()
 		audio.tags.add(
