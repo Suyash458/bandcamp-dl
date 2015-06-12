@@ -19,6 +19,9 @@ class Downloader():
 	def __init__(self,url = None,dirname = None):
 		self.url = url
 		self.dirname = dirname
+		self.session = requests.Session()
+		self.session.mount("http://", requests.adapters.HTTPAdapter(max_retries=2))
+		self.session.mount("https://", requests.adapters.HTTPAdapter(max_retries=2))
 		
 	def getData(self,soup):	
 		content = soup.find('meta',{'name':'Description'})['content']		
@@ -26,7 +29,7 @@ class Downloader():
 		var = re.search('trackinfo.*}]',str(JSdata)).group()[11::]
 		tracks = json.loads(var)
 		artist = re.search('artist: .*"',str(JSdata)).group()[9:-1]
-		album = re.search('album_title.*"',str(JSdata)).group().split(':')[1][2:-1]
+		album = re.search('album_title.*"',str(JSdata)).group().split(': ')[1][1:-1]
 		year = content.strip()[-1:-5:-1][::-1]
 		metadata = {'artist' : artist,
 					'album' : album,
@@ -49,7 +52,7 @@ class Downloader():
 				
 	def getFile(self,filename,link):
 		print "Connecting to stream..."
-		response = requests.get(str(link), stream=True)
+		response = self.session.get(str(link), stream=True)
 		print "Response: "+ str(response.status_code)		
 		file_size = float(response.headers['content-length'])
 		filename = re.sub('[\/:*"?<>|]','_',filename)
@@ -69,8 +72,8 @@ class Downloader():
 					file.flush()
 					done += len(chunk)
 					self.progressBar(done,file_size)
-		return filename
 		print "\nDownload complete."
+		return filename
 	
 	def tagFile(self,filename,metadata,track):
 		audio = MP3(filename,ID3=ID3)
@@ -118,6 +121,7 @@ class Downloader():
 		parser = HTMLParser.HTMLParser()
 		soup = BeautifulSoup(parser.unescape(response.text))
 		metadata,tracks = self.getData(soup)
+		print metadata['album']
 		folder = re.sub('[\/:*"?<>|]','_',metadata['artist'] + ' - ' + metadata['album'])
 		if not os.path.isdir(folder):
 			os.mkdir(folder)
