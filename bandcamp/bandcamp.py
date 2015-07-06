@@ -16,9 +16,9 @@ from mutagen.id3 import ID3, TIT2, TALB, TPE1, TPE2, COMM, USLT, TCOM, TCON, TDR
 
 class Downloader():
 	
-	def __init__(self,url = None,dirname = None):
-		self.url = url
-		self.dirname = dirname
+	def __init__(self,args):
+		self.url = args.url
+		self.dirname = args.dir
 		self.session = requests.Session()
 		self.session.mount("http://", requests.adapters.HTTPAdapter(max_retries=2))
 		self.session.mount("https://", requests.adapters.HTTPAdapter(max_retries=2))
