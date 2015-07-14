@@ -1,17 +1,11 @@
-'''
-1. Take command line arguments. //Done
-2. Change directory. //Done
-3. Validate file name. //Done
-4. Check existing files. //Done
-5. Make it robust.
-6. Improve progressbar.
-'''
-
 import re,json,requests,HTMLParser
 from bs4 import BeautifulSoup
 import sys,os
 from mutagen.mp3 import MP3
 from mutagen.id3 import ID3, TIT2, TALB, TPE1, TPE2, COMM, USLT, TCOM, TCON, TDRC,APIC
+from contextlib import closing
+from time import sleep
+import socket
 
 
 class Downloader():
@@ -22,7 +16,30 @@ class Downloader():
 		self.session = requests.Session()
 		self.session.mount("http://", requests.adapters.HTTPAdapter(max_retries=2))
 		self.session.mount("https://", requests.adapters.HTTPAdapter(max_retries=2))
-		
+	
+	def connectionHandler(self,url,stream = False,timeout = 15):
+		try:
+			response = self.session.get(url,stream = stream,timeout = timeout)
+			assert response.status_code == 200
+			return response
+		except requests.exceptions.ConnectionError:
+			print "Connection error. Retrying in 15 seconds."
+			sleep(15)
+			return self.connectionHandler(url,stream)
+		except TypeError:
+			print "Type error.Retrying in 15 seconds."
+			sleep(15)
+			return self.connectionHandler(url,stream)
+		except AssertionError:
+			print "Connection error or invalid URL."
+			sys.exit(0) 
+		except requests.exceptions.HTTPError:
+			print "Invalid URL."
+			return
+		except KeyboardInterrupt:
+			print "\nExiting."
+			sys.exit(0)
+				
 	def getData(self,soup):	
 		content = soup.find('meta',{'name':'Description'})['content']		
 		JSdata = soup.findAll('script')
@@ -41,7 +58,7 @@ class Downloader():
 		albumArtURL = re.search('artFullsizeUrl.*"',str(JSdata)).group()[17:-1]
 		print "Downloading Album Art."
 		format = albumArtURL.split('.')[-1]
-		self.getFile('album-art.' + format,parser.unescape(albumArtURL))
+		self.getFile('album-art.' + format,parser.unescape(albumArtURL),True)
 		
 	def progressBar(self,done,file_size):
 		percentage = ((done/file_size)*100)
@@ -50,30 +67,61 @@ class Downloader():
 		sys.stdout.write('[' + '#'*int((percentage/5)) + ' '*int((100-percentage)/5) + '] ')
 		sys.stdout.write('%.2f' % percentage + ' %')
 				
-	def getFile(self,filename,link):
-		print "Connecting to stream..."
-		response = self.session.get(str(link), stream=True)
-		print "Response: "+ str(response.status_code)		
-		file_size = float(response.headers['content-length'])
-		filename = re.sub('[\/:*"?<>|]','_',filename)
-		if(os.path.isfile(filename)):
-			if os.path.getsize(filename) >= long(file_size):
-				print filename + " already exists, skipping."
-				return filename
-			else:
-				print "Incomplete download, restarting."
-		print "File Size: " + '%.2f' % (file_size/(1000**2)) + ' MB'
-		print "Saving as: " + filename
-		done = 0
-		with open(filename,'wb') as file:
-			for chunk in response.iter_content(chunk_size=1024):
-				if chunk:
-					file.write(chunk)
-					file.flush()
-					done += len(chunk)
-					self.progressBar(done,file_size)
-		print "\nDownload complete."
-		return filename
+				
+	def getFile(self,filename,link,silent = False):
+		if link is not None:
+			if silent:
+				try:
+					with closing(self.connectionHandler(link,True,5)) as response:
+						with open(filename,'wb') as file:
+							for chunk in response.iter_content(chunk_size=1024):
+								if chunk:
+									file.write(chunk)
+									file.flush()
+					return filename
+				except:
+					self.getFile(filename,link,True)			
+			print "\nConnecting to stream..."
+			try:
+				with closing(self.connectionHandler(link,True,5)) as response:
+					print "Response: "+ str(response.status_code)		
+					file_size = float(response.headers['content-length'])	
+					if(os.path.isfile(filename)):
+						if os.path.getsize(filename) >= long(file_size):
+							print filename + " already exists, skipping."
+							return filename
+						else:
+							print "Incomplete download, restarting."
+					print "File Size: " + '%.2f' % (file_size/(1000**2)) + ' MB'
+					print "Saving as: " + filename
+					done = 0
+					try:
+						with open(filename,'wb') as file:
+							for chunk in response.iter_content(chunk_size=1024):
+								if chunk:
+									file.write(chunk)
+									file.flush()
+									done += len(chunk)
+									self.progressBar(done,file_size)
+									
+						if os.path.getsize(filename) < long(file_size):
+							print "\nConnection error. Restarting in 15 seconds."
+							sleep(15)
+							return self.getFile(filename,link,silent)
+						print "\nDownload complete."
+						return filename
+					except socket.error:
+						return self.getFile(filename,link,silent)
+					except requests.exceptions.ConnectionError:
+						return self.getFile(filename,link,silent)
+					except KeyboardInterrupt:
+						print "\nExiting."
+						sys.exit(0)
+			except KeyboardInterrupt:
+				print "\nExiting." 
+				sys.exit(0)
+		else:
+			return 
 	
 	def tagFile(self,filename,metadata,track):
 		audio = MP3(filename,ID3=ID3)
@@ -109,7 +157,7 @@ class Downloader():
 			if self.dirname is not None:
 				os.chdir(str(self.dirname))
 			print "Connecting ... "
-			response = requests.get(self.url)
+			response = self.connectionHandler(self.url)
 		except WindowsError:
 			print "Invalid Directory"
 			return

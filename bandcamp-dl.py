@@ -1,5 +1,5 @@
 from bandcamp import bandcamp
-import sys,argparse
+import sys,argparse,os
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--url',default = None, type = str, help = 'URL to download tracks from.')
