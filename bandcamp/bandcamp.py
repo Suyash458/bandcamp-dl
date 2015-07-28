@@ -22,20 +22,15 @@ class Downloader():
 			response = self.session.get(url,stream = stream,timeout = timeout)
 			assert response.status_code == 200
 			return response
-		except requests.exceptions.ConnectionError:
+		except (requests.exceptions.ConnectionError,
+				TypeError,
+				socket.error):
 			print "Connection error. Retrying in 15 seconds."
 			sleep(15)
 			return self.connectionHandler(url,stream)
-		except TypeError:
-			print "Type error.Retrying in 15 seconds."
-			sleep(15)
-			return self.connectionHandler(url,stream)
-		except AssertionError:
+		except (AssertionError,requests.exceptions.HTTPError):
 			print "Connection error or invalid URL."
 			sys.exit(0) 
-		except requests.exceptions.HTTPError:
-			print "Invalid URL."
-			return
 		except KeyboardInterrupt:
 			print "\nExiting."
 			sys.exit(0)
@@ -119,9 +114,8 @@ class Downloader():
 					except KeyboardInterrupt:
 						print "\nExiting."
 						sys.exit(0)
-					except socket.error:
-						return self.getFile(filename,link,silent)
-					except requests.exceptions.ConnectionError:
+					except (socket.error,
+							requests.exceptions.ConnectionError):
 						return self.getFile(filename,link,silent)
 			except KeyboardInterrupt:
 				print "\nExiting." 
