@@ -41,7 +41,8 @@ class Downloader():
 		var = re.search('trackinfo.*}]',str(JSdata)).group()[11::]
 		tracks = json.loads(var)
 		artist = re.search('artist: .*"',str(JSdata)).group()[9:-1]
-		album = re.search('album_title.*"',str(JSdata)).group().split(': ')[1][1:-1]
+		album = re.search('album_title.*"',str(JSdata))
+		album = album.group().split(': ')[1][1:-1] if album is not None else None
 		year = content.strip()[-1:-5:-1][::-1]
 		metadata = {'artist' : artist,
 					'album' : album,
@@ -169,18 +170,24 @@ class Downloader():
 		parser = HTMLParser.HTMLParser()
 		soup = BeautifulSoup(parser.unescape(response.text))
 		metadata,tracks = self.getData(soup)
-		print metadata['album']
-		folder = re.sub('[\/:*"?<>|]','_',metadata['artist'] + ' - ' + metadata['album'])
+		if metadata['album'] is not None:
+			folder = re.sub('[\/:*"?<>|]','_',metadata['artist'] + ' - ' + metadata['album'])
+		else:
+			folder = re.sub('[\/:*"?<>|]','_',metadata['artist'])
 		if not os.path.isdir(folder):
 			os.mkdir(folder)
 		os.chdir(os.getcwd() + '\\' + str(folder))
 		self.getAlbumArt(soup,parser)
 		print "Saving in : " + os.getcwd()
 		print str(len(tracks)) + " track(s) found."
-		print "Album : " + metadata['album']
+		if metadata['album'] is not None:
+			print "Album : " + metadata['album']
 		print "Artist: " + metadata['artist']
 		for track in tracks:
-			filename = parser.unescape(str(track['track_num']) + '. ' + track['title'].encode('utf-8') + '.mp3')
+			if track['track_num'] is not None:
+				filename = parser.unescape(str(track['track_num']) + '. ' + track['title'].encode('utf-8') + '.mp3')
+			else:
+				filename = parser.unescape(str(track['title'].encode('utf-8') + '.mp3'))
 			link = parser.unescape(track['file']['mp3-128'])
 			new_filename = self.getFile(filename,link)
 			self.tagFile(new_filename,metadata,track)
