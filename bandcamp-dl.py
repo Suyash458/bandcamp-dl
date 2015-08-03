@@ -1,4 +1,4 @@
-from bandcamp import bandcamp
+from downloader import downloader
 import sys,argparse,os
 
 parser = argparse.ArgumentParser()
@@ -10,5 +10,5 @@ if __name__ == '__main__':
 	if args.url == None:
 		print "No URL entered."
 		sys.exit(0)
-	downloader = bandcamp.Downloader(args)
+	downloader = downloader.Downloader(args)
 	downloader.Download()
