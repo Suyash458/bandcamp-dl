@@ -12,7 +12,8 @@ A small command-line program to download tracks from Bandcamp.com
 
 ##Usage
 * On the terminal or Command Prompt Type
-  `python bandcamp-dl.py "url" "directory"`
+  `python bandcamp-dl.py --url "url" --dir "directory"`
+* The current working directory is the default download location.
   
 ###Dependencies
 * BeautifulSoup - HTML parsing
