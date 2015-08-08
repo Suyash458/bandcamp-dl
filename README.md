@@ -12,7 +12,7 @@ A small command-line program to download tracks from Bandcamp.com
 
 ##Usage
 * On the terminal or Command Prompt Type
-  `python bandcamp.py "url" "directory"`
+  `python bandcamp-dl.py "url" "directory"`
   
 ###Dependencies
 * BeautifulSoup - HTML parsing
