@@ -16,6 +16,8 @@ class Downloader():
 		self.session = requests.Session()
 		self.session.mount("http://", requests.adapters.HTTPAdapter(max_retries=2))
 		self.session.mount("https://", requests.adapters.HTTPAdapter(max_retries=2))
+		self.args = args
+		self.completed = 0
 	
 	def connectionHandler(self,url,stream = False,timeout = 15):
 		try:
@@ -146,7 +148,33 @@ class Downloader():
 		audio.tags["TPE1"] = TPE1(encoding=3, text=metadata['artist'])
 		audio.tags["TDRC"] = TDRC(encoding=3, text=unicode(metadata['year']))
 		audio.save()
-				
+	
+	def getAlbum(self,tracks,metadata,parser):
+		for index,track in enumerate(tracks):
+			if track['track_num'] is not None:
+				filename = parser.unescape(str(track['track_num']) + '. ' + track['title'].encode('utf-8') + '.mp3')
+			else:
+				filename = parser.unescape(str(track['title'].encode('utf-8') + '.mp3'))
+			link = parser.unescape(track['file']['mp3-128'])
+			if self.args.limit is not None:
+				if self.completed == self.args.limit:
+					return
+			if self.args.include is not None:
+				if self.completed == len(self.args.include):
+					break
+				if(index + 1) not in self.args.include:
+					if self.args.range:
+						if not (self.args.range[0] <= (index + 1) <= self.args.range[1]):
+							continue
+					else:
+						continue
+			elif self.args.exclude is not None:
+				if (index + 1) in self.args.exclude:
+					print "Skipping " + str(track.title.encode('utf-8'))
+					continue
+			new_filename = self.getFile(filename,link)
+			self.tagFile(new_filename,metadata,track)	
+					
 	def Download(self):
 		if self.url is None:
 			print "No URL entered."
@@ -183,11 +211,4 @@ class Downloader():
 		if metadata['album'] is not None:
 			print "Album : " + metadata['album']
 		print "Artist: " + metadata['artist']
-		for track in tracks:
-			if track['track_num'] is not None:
-				filename = parser.unescape(str(track['track_num']) + '. ' + track['title'].encode('utf-8') + '.mp3')
-			else:
-				filename = parser.unescape(str(track['title'].encode('utf-8') + '.mp3'))
-			link = parser.unescape(track['file']['mp3-128'])
-			new_filename = self.getFile(filename,link)
-			self.tagFile(new_filename,metadata,track)
+		self.getAlbum(tracks,metadata,parser)
