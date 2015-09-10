@@ -1,3 +1,4 @@
+from __future__ import print_function
 import re,json,requests,HTMLParser
 from bs4 import BeautifulSoup
 import sys,os
@@ -27,44 +28,45 @@ class Downloader():
 		except (requests.exceptions.ConnectionError,
 				TypeError,
 				socket.error):
-			print "Connection error. Retrying in 15 seconds."
+			print("Connection error. Retrying in 15 seconds.")
 			sleep(15)
 			return self.connectionHandler(url,stream)
 		except (AssertionError,requests.exceptions.HTTPError):
-			print "Connection error or invalid URL."
+			print("Connection error or invalid URL.")
 			sys.exit(0) 
 		except KeyboardInterrupt:
-			print "\nExiting."
+			print ("\nExiting.")
 			sys.exit(0)
 				
 	def getData(self,soup):	
 		content = soup.find('meta',{'name':'Description'})['content']		
 		JSdata = soup.findAll('script')
-		var = re.search('trackinfo.*}]',str(JSdata)).group()[11::]
-		tracks = json.loads(var)
-		artist = re.search('artist: .*"',str(JSdata)).group()[9:-1]
-		album = re.search('album_title.*"',str(JSdata))
+		var = re.search('trackinfo : .*?}]',str(JSdata[7]))
+		var = var.group()[11::]
+		tracks = json.loads(var.replace('\\x','\\u00'))
+		artist = re.search('artist: [^,]*',str(JSdata)).group()[8::].replace('"','')
+		album = re.search('album_title: [^,]*"',str(JSdata))
 		album = album.group().split(': ')[1][1:-1] if album is not None else None
 		year = content.strip()[-1:-5:-1][::-1]
 		metadata = {'artist' : artist,
 					'album' : album,
-					'year' : year}
+					'year' : year
+					}
 		return metadata,tracks
 	
 	def getAlbumArt(self,soup,parser):
 		JSdata = soup.findAll('script')
 		albumArtURL = re.search('artFullsizeUrl.*"',str(JSdata)).group()[17:-1]
-		print "Downloading Album Art."
+		print ("Downloading Album Art.")
 		format = albumArtURL.split('.')[-1]
 		self.getFile('album-art.' + format,parser.unescape(albumArtURL),True)
 		
 	def progressBar(self,done,file_size):
 		percentage = ((done/file_size)*100)
+		temp = '#'*int((percentage/5))
+		progressString = '\r[{0: <20}] | {1:2.2f} %'.format(temp, percentage)
+		print(progressString,end ='')
 		sys.stdout.flush()
-		sys.stdout.write('\r')	
-		sys.stdout.write('[' + '#'*int((percentage/5)) + ' '*int((100-percentage)/5) + '] ')
-		sys.stdout.write('%.2f' % percentage + ' %')
-				
 				
 	def getFile(self,filename,link,silent = False):
 		new_filename = re.sub('[\/:*"?<>|]','_',filename)
@@ -79,25 +81,25 @@ class Downloader():
 									file.flush()
 					return new_filename
 				except KeyboardInterrupt:
-					print "\nExiting."
+					print ("\nExiting.")
 					sys.exit(0)
 				except socket.error:
 					return self.getFile(filename,link,silent)
 				except requests.exceptions.ConnectionError:
 					return self.getFile(filename,link,silent)		
-			print "\nConnecting to stream..."
+			print ("\nConnecting to stream...")
 			try:
 				with closing(self.connectionHandler(link,True,5)) as response:
-					print "Response: "+ str(response.status_code)		
+					print ("Response: "+ str(response.status_code))		
 					file_size = float(response.headers['content-length'])	
 					if(os.path.isfile(new_filename)):
 						if os.path.getsize(new_filename) >= long(file_size):
-							print new_filename + " already exists, skipping."
+							print (new_filename + " already exists, skipping.")
 							return new_filename
 						else:
-							print "Incomplete download, restarting."
-					print "File Size: " + '%.2f' % (file_size/(1000**2)) + ' MB'
-					print "Saving as: " + new_filename
+							print ("Incomplete download, restarting.")
+					print ("File Size: " + '%.2f' % (file_size/(1000**2)) + ' MB')
+					print ("Saving as: " + new_filename)
 					done = 0
 					try:
 						with open(new_filename,'wb') as file:
@@ -109,19 +111,19 @@ class Downloader():
 									self.progressBar(done,file_size)
 									
 						if os.path.getsize(new_filename) < long(file_size):
-							print "\nConnection error. Restarting in 15 seconds."
+							print( "\nConnection error. Restarting in 15 seconds.")
 							sleep(15)
 							return self.getFile(filename,link,silent)
-						print "\nDownload complete."
+						print ("\nDownload complete.")
 						return new_filename
 					except KeyboardInterrupt:
-						print "\nExiting."
+						print ("\nExiting.")
 						sys.exit(0)
 					except (socket.error,
 							requests.exceptions.ConnectionError):
 						return self.getFile(filename,link,silent)
 			except KeyboardInterrupt:
-				print "\nExiting." 
+				print ("\nExiting." )
 				sys.exit(0)
 		else:
 			return 
@@ -170,33 +172,33 @@ class Downloader():
 						continue
 			elif self.args.exclude is not None:
 				if (index + 1) in self.args.exclude:
-					print "Skipping " + str(track.title.encode('utf-8'))
+					print ("Skipping " + str(track.title.encode('utf-8')))
 					continue
 			new_filename = self.getFile(filename,link)
 			self.tagFile(new_filename,metadata,track)	
 					
 	def Download(self):
 		if self.url is None:
-			print "No URL entered."
+			print ("No URL entered.")
 			return
 		elif 'bandcamp' not in self.url:
-			print "Invalid URL"
+			print ("Invalid URL")
 			return
 		try:
 			if self.dirname is not None:
 				os.chdir(str(self.dirname))
-			print "Connecting ... "
+			print ("Connecting ... ")
 			response = self.connectionHandler(self.url)
 		except WindowsError:
-			print "Invalid Directory"
+			print ("Invalid Directory")
 			return
 		except requests.exceptions:
-			print "Network Error"
+			print ("Network Error")
 			return
-		print "Response: " + str(response.status_code)
+		print ("Response: " + str(response.status_code))
 		assert response.status_code == 200
 		parser = HTMLParser.HTMLParser()
-		soup = BeautifulSoup(parser.unescape(response.text))
+		soup = BeautifulSoup(parser.unescape(response.text),'lxml')
 		metadata,tracks = self.getData(soup)
 		if metadata['album'] is not None:
 			folder = re.sub('[\/:*"?<>|]','_',metadata['artist'] + ' - ' + metadata['album'])
@@ -205,10 +207,10 @@ class Downloader():
 		if not os.path.isdir(folder):
 			os.mkdir(folder)
 		os.chdir(os.getcwd() + '\\' + str(folder))
-		self.getAlbumArt(soup,parser)
-		print "Saving in : " + os.getcwd()
-		print str(len(tracks)) + " track(s) found."
+		#self.getAlbumArt(soup,parser)
+		print ("Saving in : " + os.getcwd())
+		print (str(len(tracks)) + " track(s) found.")
 		if metadata['album'] is not None:
-			print "Album : " + metadata['album']
-		print "Artist: " + metadata['artist']
+			print ("Album : " + metadata['album'])
+		print ("Artist: " + metadata['artist'])
 		self.getAlbum(tracks,metadata,parser)
