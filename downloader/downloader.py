@@ -58,7 +58,6 @@ class Downloader():
 		JSdata = soup.findAll('script')
 		albumArtURL = re.search('artFullsizeUrl.*",',str(JSdata)).group()
 		albumArtURL = re.search('artFullsizeUrl.*",', albumArtURL[0:100]).group()[17:-2]
-		print(albumArtURL)
 		print ("Downloading Album Art.")
 		format = albumArtURL.split('.')[-1]
 		self.getFile('album-art.' + format, albumArtURL, True)
@@ -174,7 +173,7 @@ class Downloader():
 						continue
 			elif self.args.exclude is not None:
 				if (index + 1) in self.args.exclude:
-					print ("Skipping " + str(track.title.encode('utf-8')))
+					print ("Skipping " + str(track['title'].encode('utf-8')))
 					continue
 			new_filename = self.getFile(filename,link)
 			self.tagFile(new_filename,metadata,track)	
