@@ -182,9 +182,6 @@ class Downloader():
 		if self.url is None:
 			print ("No URL entered.")
 			return
-		elif 'bandcamp' not in self.url:
-			print ("Invalid URL")
-			return
 		try:
 			if self.dirname is not None:
 				os.chdir(str(self.dirname))
