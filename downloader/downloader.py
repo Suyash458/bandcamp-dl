@@ -153,7 +153,9 @@ class Downloader():
 		audio.save()
 	
 	def getAlbum(self,tracks,metadata):
-		for index,track in enumerate(tracks):
+		for index, track in enumerate(tracks):
+			if track['file'] is None:
+				continue
 			if track['track_num'] is not None:
 				filename = str(track['track_num']) + '. ' + str(track['title'].encode('utf-8')) + '.mp3'
 			else:
