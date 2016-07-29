@@ -42,6 +42,8 @@ class Downloader():
 		content = soup.find('meta',{'name':'Description'})['content']		
 		JSdata = soup.findAll('script')
 		var = re.search('trackinfo : .*?}]',str(JSdata))
+		if not var:
+			var = re.search('trackinfo: .*?}]',str(JSdata))
 		var = var.group()[11::]
 		tracks = json.loads(var)
 		artist = re.search('artist: [^,]*',str(JSdata)).group()[8::].replace('"','')
